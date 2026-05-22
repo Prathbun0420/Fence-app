@@ -3,7 +3,7 @@ exports.handler = async function(event, context) {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
-  const OPENAI_KEY = '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';
+  const OPENAI_KEY = process.env.OPENAI_KEY;
 
   try {
     const body = JSON.parse(event.body);
