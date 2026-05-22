@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Fence Visualizer</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f0; min-height: 100vh; color: #1a1a1a; }
+.app { display: flex; flex-direction: column; min-height: 100vh; max-width: 860px; margin: 0 auto; background: #fff; }
+.header { padding: 16px 20px; background: #fff; border-bottom: 0.5px solid rgba(0,0,0,0.1); display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 10; }
+.header-icon { width: 38px; height: 38px; background: #e8f0fe; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.header h1 { font-size: 17px; font-weight: 600; }
+.header p { font-size: 12px; color: #888; margin-top: 1px; }
+.step-bar { display: flex; padding: 10px 16px; gap: 6px; background: #fff; border-bottom: 0.5px solid rgba(0,0,0,0.08); align-items: center; overflow-x: auto; }
+.step { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #bbb; white-space: nowrap; }
+.step.active { color: #2563eb; }
+.step.done { color: #16a34a; }
+.step-num { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid currentColor; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; flex-shrink: 0; }
+.step-div { width: 20px; height: 0.5px; background: #ddd; flex-shrink: 0; }
+.content { flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.card { background: #fff; border: 0.5px solid rgba(0,0,0,0.1); border-radius: 14px; overflow: hidden; }
+.card-header { padding: 13px 16px; border-bottom: 0.5px solid rgba(0,0,0,0.08); display: flex; align-items: center; gap: 8px; background: #fafaf8; }
+.card-header i { font-size: 17px; color: #2563eb; }
+.card-header h2 { font-size: 14px; font-weight: 600; }
+.card-body { padding: 16px; }
+.upload-zone { border: 2px dashed #d1d5db; border-radius: 12px; padding: 40px 16px; text-align: center; cursor: pointer; background: #fafaf8; }
+.upload-zone:active { background: #f0f4ff; border-color: #2563eb; }
+.upload-zone i { font-size: 36px; color: #9ca3af; display: block; margin-bottom: 10px; }
+.upload-zone p { font-size: 15px; color: #374151; font-weight: 500; }
+.upload-zone span { font-size: 12px; color: #9ca3af; display: block; margin-top: 4px; }
+#canvas-wrap { position: relative; width: 100%; background: #000; border-radius: 10px; overflow: hidden; touch-action: none; }
+#photo-canvas { display: block; width: 100%; }
+#draw-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; touch-action: none; }
+.tool-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.tool-btn { display: flex; align-items: center; gap: 5px; padding: 8px 13px; border: 0.5px solid rgba(0,0,0,0.15); border-radius: 8px; background: #fff; font-size: 13px; color: #374151; cursor: pointer; font-family: inherit; -webkit-tap-highlight-color: transparent; }
+.tool-btn:active { transform: scale(0.96); }
+.tool-btn.active { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+.tool-btn.danger { color: #dc2626; border-color: #fecaca; }
+.hint { font-size: 12px; color: #6b7280; margin-bottom: 10px; padding: 8px 12px; background: #f9fafb; border-radius: 8px; border-left: 3px solid #d1d5db; }
+.materials-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.material-card { border: 1.5px solid rgba(0,0,0,0.1); border-radius: 10px; overflow: hidden; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.material-card:active { transform: scale(0.97); }
+.material-card.selected { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+.material-thumb { height: 68px; display: flex; align-items: center; justify-content: center; font-size: 30px; background: #f9fafb; }
+.material-label { padding: 6px; font-size: 11px; color: #6b7280; text-align: center; border-top: 0.5px solid rgba(0,0,0,0.08); }
+.material-card.selected .material-label { color: #2563eb; background: #eff6ff; }
+.upload-material { border: 1.5px dashed rgba(0,0,0,0.15); background: #fafaf8; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; cursor: pointer; height: 80px; border-radius: 10px; }
+.height-row { display: flex; align-items: center; gap: 12px; }
+.height-row label { font-size: 13px; color: #6b7280; white-space: nowrap; }
+.height-row input[type=range] { flex: 1; accent-color: #2563eb; }
+.height-val { font-size: 14px; font-weight: 600; min-width: 38px; }
+.section-label { font-size: 11px; font-weight: 600; color: #9ca3af; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.06em; }
+textarea { width: 100%; padding: 10px 12px; border: 0.5px solid rgba(0,0,0,0.15); border-radius: 8px; background: #fff; color: #1a1a1a; font-size: 13px; font-family: inherit; resize: vertical; min-height: 64px; outline: none; }
+.action-btn { width: 100%; padding: 15px; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: inherit; }
+.action-btn.primary { background: #1a1a1a; color: #fff; }
+.action-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+#result-img { width: 100%; border-radius: 10px; display: block; }
+.result-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.result-actions button { flex: 1; min-width: 100px; }
+.result-wrap { position: relative; min-height: 200px; background: #f0f0f0; border-radius: 10px; }
+.loading-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.65); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; border-radius: 10px; }
+.loading-overlay.hidden { display: none; }
+.spinner { width: 38px; height: 38px; border: 3px solid rgba(255,255,255,0.2); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-overlay p { color: #fff; font-size: 14px; text-align: center; padding: 0 20px; }
+.progress-bar-wrap { width: 180px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; }
+.progress-bar { height: 100%; background: #fff; border-radius: 2px; width: 0; transition: width 0.5s ease; }
+.status-msg { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-top: 10px; display: none; }
+.status-msg.error { background: #fef2f2; color: #dc2626; display: block; }
+.status-msg.success { background: #f0fdf4; color: #16a34a; display: block; }
+.hidden { display: none !important; }
+@media (max-width: 480px) {
+  .content { padding: 12px; gap: 10px; }
+  .card-body { padding: 12px; }
+  .materials-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="header-icon"><i class="ti ti-home-check" style="font-size:20px;color:#2563eb"></i></div>
+    <div>
+      <h1>Fence Visualizer</h1>
+      <p>Show customers their new fence before it goes up</p>
+    </div>
+  </div>
+  <div class="step-bar">
+    <div class="step active" id="s1"><div class="step-num">1</div> Photo</div>
+    <div class="step-div"></div>
+    <div class="step" id="s2"><div class="step-num">2</div> Mark fence</div>
+    <div class="step-div"></div>
+    <div class="step" id="s3"><div class="step-num">3</div> Material</div>
+    <div class="step-div"></div>
+    <div class="step" id="s4"><div class="step-num">4</div> Preview</div>
+  </div>
+  <div class="content">
+
+    <div id="panel-photo" class="card">
+      <div class="card-header"><i class="ti ti-camera"></i><h2>Step 1 — Take or upload a photo</h2></div>
+      <div class="card-body">
+        <div class="upload-zone" onclick="document.getElementById('file-input').click()">
+          <i class="ti ti-photo-up"></i>
+          <p>Tap to take a photo or upload from library</p>
+          <span>Works with camera on iPhone and iPad</span>
+        </div>
+        <input type="file" id="file-input" accept="image/*" capture="environment" style="display:none">
+      </div>
+    </div>
+
+    <div id="panel-draw" class="card hidden">
+      <div class="card-header"><i class="ti ti-pencil"></i><h2>Step 2 — Mark the fence area</h2></div>
+      <div class="card-body">
+        <div class="tool-row">
+          <button class="tool-btn active" id="btn-box" onclick="setTool('box')"><i class="ti ti-selection"></i> Box</button>
+          <button class="tool-btn" id="btn-line" onclick="setTool('line')"><i class="ti ti-minus"></i> Baseline</button>
+          <button class="tool-btn" onclick="undoLast()"><i class="ti ti-arrow-back"></i> Undo</button>
+          <button class="tool-btn danger" onclick="clearDrawings()"><i class="ti ti-trash"></i> Clear</button>
+        </div>
+        <div class="hint" id="tool-hint">Draw boxes around existing fence to replace it, or switch to Baseline to draw where a new fence will go.</div>
+        <div id="canvas-wrap">
+          <canvas id="photo-canvas"></canvas>
+          <canvas id="draw-canvas"
+            onmousedown="startDraw(event)" onmousemove="moveDraw(event)" onmouseup="endDraw(event)" onmouseleave="endDraw(event)"
+            ontouchstart="startDraw(event)" ontouchmove="moveDraw(event)" ontouchend="endDraw(event)">
+          </canvas>
+        </div>
+        <button class="action-btn primary" style="margin-top:14px" onclick="goToMaterial()">
+          Next: Choose material <i class="ti ti-arrow-right"></i>
+        </button>
+      </div>
+    </div>
+
+    <div id="panel-material" class="card hidden">
+      <div class="card-header"><i class="ti ti-tree"></i><h2>Step 3 — Choose fence material</h2></div>
+      <div class="card-body">
+        <div class="section-label">Catalog</div>
+        <div class="materials-grid" id="materials-grid"></div>
+        <div style="margin-top:16px">
+          <div class="section-label">Custom material</div>
+          <div class="upload-material" onclick="document.getElementById('mat-upload').click()">
+            <i class="ti ti-upload" style="font-size:22px;color:#9ca3af"></i>
+            <span style="font-size:12px;color:#9ca3af">Upload your own material photo</span>
+          </div>
+          <input type="file" id="mat-upload" accept="image/*" style="display:none">
+          <div id="custom-mat-name" style="font-size:12px;color:#16a34a;margin-top:6px;display:none"></div>
+        </div>
+        <div style="margin-top:16px">
+          <div class="section-label">Fence height</div>
+          <div class="height-row">
+            <label>Height</label>
+            <input type="range" id="fence-height" min="3" max="8" step="0.5" value="6">
+            <span class="height-val" id="height-val">6 ft</span>
+          </div>
+        </div>
+        <div style="margin-top:16px">
+          <div class="section-label">Additional notes for AI (optional)</div>
+          <textarea id="extra-notes" placeholder="e.g. natural wood stain, with post caps, weathered look..."></textarea>
+        </div>
+        <button class="action-btn primary" style="margin-top:16px" id="generate-btn" onclick="generatePreview()" disabled>
+          <i class="ti ti-wand"></i> Generate preview
+        </button>
+        <div class="status-msg" id="status-msg"></div>
+      </div>
+    </div>
+
+    <div id="panel-result" class="card hidden">
+      <div class="card-header"><i class="ti ti-eye"></i><h2>Step 4 — Preview</h2></div>
+      <div class="card-body">
+        <div class="result-wrap">
+          <img id="result-img" src="" alt="Fence preview" style="display:none">
+          <div class="loading-overlay" id="loading-overlay">
+            <div class="spinner"></div>
+            <p id="loading-text">Generating your fence preview...</p>
+            <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+          </div>
+        </div>
+        <div class="result-actions">
+          <button class="tool-btn" onclick="saveResult()"><i class="ti ti-download"></i> Save image</button>
+          <button class="tool-btn" onclick="tryAnother()"><i class="ti ti-palette"></i> Try another</button>
+          <button class="tool-btn" onclick="startOver()"><i class="ti ti-refresh"></i> Start over</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+<script>
+const MATERIALS = [
+  { id: 'wood-privacy', label: 'Wood privacy', emoji: '🪵', prompt: 'tall wooden privacy fence with vertical cedar boards, natural wood grain, brown stain' },
+  { id: 'white-vinyl', label: 'White vinyl', emoji: '🤍', prompt: 'white vinyl privacy fence with smooth clean panels' },
+  { id: 'split-rail', label: 'Split rail', emoji: '🌲', prompt: 'rustic split rail wood fence with two horizontal rails and natural log posts' },
+  { id: 'white-picket', label: 'White picket', emoji: '🏡', prompt: 'classic white painted wood picket fence with pointed tops' },
+  { id: 'chain-link', label: 'Chain link', emoji: '🔗', prompt: 'galvanized steel chain link fence with metal posts' },
+  { id: 'wrought-iron', label: 'Wrought iron', emoji: '⚫', prompt: 'black wrought iron fence with decorative vertical bars and spear tips' },
+  { id: 'horizontal-wood', label: 'Horizontal wood', emoji: '🟫', prompt: 'modern horizontal wood fence with wide cedar boards' },
+  { id: 'bamboo', label: 'Bamboo', emoji: '🎋', prompt: 'natural bamboo fence with dense vertical bamboo poles' },
+];
+
+let photoImg=null, drawings=[], currentDraw=null, tool='box', selectedMaterial=null;
+let photoCanvas, drawCanvas, photoCtx, drawCtx, canvasScale=1, progressInterval=null;
+
+function init() {
+  photoCanvas = document.getElementById('photo-canvas');
+  drawCanvas = document.getElementById('draw-canvas');
+  photoCtx = photoCanvas.getContext('2d');
+  drawCtx = drawCanvas.getContext('2d');
+  document.getElementById('file-input').addEventListener('change', e => { if(e.target.files[0]) loadPhoto(e.target.files[0]); });
+  document.getElementById('mat-upload').addEventListener('change', e => { if(e.target.files[0]) { selectedMaterial='custom'; document.getElementById('generate-btn').disabled=false; document.getElementById('custom-mat-name').textContent='✓ '+e.target.files[0].name; document.getElementById('custom-mat-name').style.display='block'; }});
+  document.getElementById('fence-height').addEventListener('input', e => { document.getElementById('height-val').textContent = parseFloat(e.target.value).toFixed(1).replace('.0','') + ' ft'; });
+  renderMaterials();
+}
+
+function renderMaterials() {
+  document.getElementById('materials-grid').innerHTML = MATERIALS.map(m =>
+    `<div class="material-card" id="mat-${m.id}" onclick="selectMaterial('${m.id}')"><div class="material-thumb">${m.emoji}</div><div class="material-label">${m.label}</div></div>`
+  ).join('');
+}
+
+function selectMaterial(id) {
+  selectedMaterial=id;
+  document.querySelectorAll('.material-card').forEach(c=>c.classList.remove('selected'));
+  document.getElementById('mat-'+id).classList.add('selected');
+  document.getElementById('generate-btn').disabled=false;
+  document.getElementById('custom-mat-name').style.display='none';
+  clearStatus();
+}
+
+function loadPhoto(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      photoImg=img; setupCanvas(img);
+      document.getElementById('panel-photo').classList.add('hidden');
+      document.getElementById('panel-draw').classList.remove('hidden');
+      setStep(2);
+      setTimeout(()=>document.getElementById('panel-draw').scrollIntoView({behavior:'smooth'}),50);
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function setupCanvas(img) {
+  const wrap = document.getElementById('canvas-wrap');
+  const maxW = wrap.clientWidth || 600;
+  // Keep internal canvas max 1024px wide
+  const internalW = Math.min(img.width, 1024);
+  const internalH = Math.round(internalW * img.height / img.width);
+  photoCanvas.width=internalW; photoCanvas.height=internalH;
+  drawCanvas.width=internalW; drawCanvas.height=internalH;
+  photoCanvas.style.width=maxW+'px'; photoCanvas.style.height=Math.round(maxW*img.height/img.width)+'px';
+  drawCanvas.style.width=maxW+'px'; drawCanvas.style.height=Math.round(maxW*img.height/img.width)+'px';
+  canvasScale=internalW/maxW;
+  photoCtx.drawImage(img,0,0,internalW,internalH);
+}
+
+function getPos(e) {
+  const rect=drawCanvas.getBoundingClientRect();
+  const cx=e.touches?e.touches[0].clientX:e.clientX;
+  const cy=e.touches?e.touches[0].clientY:e.clientY;
+  return {x:Math.round((cx-rect.left)*canvasScale),y:Math.round((cy-rect.top)*canvasScale)};
+}
+
+function startDraw(e){e.preventDefault();const p=getPos(e);currentDraw={type:tool,x1:p.x,y1:p.y,x2:p.x,y2:p.y};}
+function moveDraw(e){e.preventDefault();if(!currentDraw)return;const p=getPos(e);currentDraw.x2=p.x;currentDraw.y2=p.y;redrawOverlay();}
+function endDraw(e){e.preventDefault();if(!currentDraw)return;if(Math.abs(currentDraw.x2-currentDraw.x1)>5||Math.abs(currentDraw.y2-currentDraw.y1)>5)drawings.push({...currentDraw});currentDraw=null;redrawOverlay();}
+
+function redrawOverlay(){
+  drawCtx.clearRect(0,0,drawCanvas.width,drawCanvas.height);
+  [...drawings,...(currentDraw?[currentDraw]:[])].forEach(d=>drawShape(d));
+}
+
+function drawShape(d){
+  const fs=Math.round(13*canvasScale);
+  drawCtx.font=`600 ${fs}px -apple-system,sans-serif`;
+  drawCtx.lineWidth=Math.round(2.5*canvasScale);
+  if(d.type==='box'){
+    const x=Math.min(d.x1,d.x2),y=Math.min(d.y1,d.y2),w=Math.abs(d.x2-d.x1),h=Math.abs(d.y2-d.y1);
+    drawCtx.strokeStyle='rgba(234,88,12,0.95)';drawCtx.fillStyle='rgba(234,88,12,0.18)';
+    drawCtx.fillRect(x,y,w,h);drawCtx.strokeRect(x,y,w,h);
+    drawCtx.fillStyle='rgba(234,88,12,0.92)';drawCtx.fillText('Replace fence',x+8,y+fs+6);
+  } else {
+    drawCtx.strokeStyle='rgba(22,163,74,0.95)';drawCtx.setLineDash([12*canvasScale,6*canvasScale]);
+    drawCtx.lineWidth=Math.round(3*canvasScale);
+    drawCtx.beginPath();drawCtx.moveTo(d.x1,d.y1);drawCtx.lineTo(d.x2,d.y2);drawCtx.stroke();
+    drawCtx.setLineDash([]);
+    drawCtx.fillStyle='rgba(22,163,74,0.92)';drawCtx.fillText('New fence baseline',d.x1+6,d.y1-8);
+  }
+}
+
+function setTool(t){
+  tool=t;
+  document.getElementById('btn-box').classList.toggle('active',t==='box');
+  document.getElementById('btn-line').classList.toggle('active',t==='line');
+  document.getElementById('tool-hint').textContent=t==='box'?'Draw boxes around existing fence to remove and replace.':'Draw a line where the new fence will go.';
+}
+
+function clearDrawings(){drawings=[];redrawOverlay();}
+function undoLast(){drawings.pop();redrawOverlay();}
+
+function goToMaterial(){
+  document.getElementById('panel-material').classList.remove('hidden');
+  setStep(3);
+  setTimeout(()=>document.getElementById('panel-material').scrollIntoView({behavior:'smooth'}),50);
+}
+
+function setStep(n){
+  [1,2,3,4].forEach(i=>{
+    const el=document.getElementById('s'+i);
+    el.classList.remove('active','done');
+    if(i<n)el.classList.add('done');
+    if(i===n)el.classList.add('active');
+  });
+}
+
+function showStatus(msg,type){const el=document.getElementById('status-msg');el.textContent=msg;el.className='status-msg '+type;}
+function clearStatus(){const el=document.getElementById('status-msg');el.className='status-msg';el.textContent='';}
+
+function startProgress(){
+  let pct=0;const bar=document.getElementById('progress-bar');bar.style.width='0%';
+  progressInterval=setInterval(()=>{pct=Math.min(pct+(Math.random()*2),88);bar.style.width=Math.round(pct)+'%';},1000);
+}
+function endProgress(){if(progressInterval)clearInterval(progressInterval);document.getElementById('progress-bar').style.width='100%';}
+
+async function generatePreview(){
+  if(!photoImg)return showStatus('Please upload a photo first.','error');
+  if(!selectedMaterial)return showStatus('Please select a material.','error');
+  clearStatus();
+  document.getElementById('panel-result').classList.remove('hidden');
+  document.getElementById('loading-overlay').classList.remove('hidden');
+  document.getElementById('result-img').style.display='none';
+  setStep(4);startProgress();
+  setTimeout(()=>document.getElementById('panel-result').scrollIntoView({behavior:'smooth'}),50);
+
+  const mat=MATERIALS.find(m=>m.id===selectedMaterial);
+  const height=document.getElementById('fence-height').value;
+  const notes=document.getElementById('extra-notes').value.trim();
+  const hasBoxes=drawings.some(d=>d.type==='box');
+  const hasLines=drawings.some(d=>d.type==='line');
+
+  let fenceDesc = mat ? mat.prompt : 'wooden privacy fence';
+  let placement = hasBoxes ? 'replacing the existing fence shown in the orange highlighted area'
+    : hasLines ? 'added along the green baseline drawn in the image'
+    : 'added along the property boundary';
+  let prompt = `This is a photo of a residential property. Please generate a photorealistic version of this same scene with a ${fenceDesc}, ${height} feet tall, ${placement}. Keep the house, landscaping, sky, and everything else identical. Only add or replace the fence. Make it look like a real photograph.`;
+  if(notes) prompt += ` Additional details: ${notes}.`;
+
+  // Composite photo + drawings into one image to send
+  const composite = document.createElement('canvas');
+  composite.width=photoCanvas.width; composite.height=photoCanvas.height;
+  const cCtx=composite.getContext('2d');
+  cCtx.drawImage(photoCanvas,0,0);
+  if(drawings.length>0) cCtx.drawImage(drawCanvas,0,0);
+
+  // Resize to max 800px to keep payload reasonable
+  const maxDim=512;
+  const scale=Math.min(maxDim/composite.width, maxDim/composite.height, 1);
+  const finalW=Math.round(composite.width*scale);
+  const finalH=Math.round(composite.height*scale);
+  const final=document.createElement('canvas');
+  final.width=finalW; final.height=finalH;
+  final.getContext('2d').drawImage(composite,0,0,finalW,finalH);
+  const imageBase64=final.toDataURL('image/jpeg',0.6);
+
+  try {
+    document.getElementById('loading-text').textContent='AI is generating your fence preview...';
+    const response=await fetch('/.netlify/functions/replicate',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({imageBase64: imageBase64, prompt: prompt})
+    });
+    const data=await response.json();
+    if(data.error) throw new Error(data.error);
+    endProgress();
+    const img=document.getElementById('result-img');
+    const src = data.imageBase64 || data.url;
+    img.onload=()=>{document.getElementById('loading-overlay').classList.add('hidden');img.style.display='block';};
+    img.src=src;
+  } catch(err){
+    endProgress();
+    document.getElementById('loading-overlay').classList.add('hidden');
+    showStatus('Error: '+err.message,'error');
+  }
+}
+
+function saveResult(){
+  const img=document.getElementById('result-img');
+  if(!img.src||img.src===window.location.href)return;
+  const a=document.createElement('a');a.href=img.src;a.download='fence-preview-'+Date.now()+'.jpg';a.target='_blank';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+}
+
+function startOver(){
+  drawings=[];selectedMaterial=null;photoImg=null;
+  document.getElementById('panel-photo').classList.remove('hidden');
+  ['panel-draw','panel-material','panel-result'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  document.getElementById('file-input').value='';
+  document.getElementById('result-img').src='';document.getElementById('result-img').style.display='none';
+  document.getElementById('custom-mat-name').style.display='none';
+  clearStatus();renderMaterials();setStep(1);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function tryAnother(){setStep(3);setTimeout(()=>document.getElementById('panel-material').scrollIntoView({behavior:'smooth'}),50);}
+
+init();
+</script>
+</body>
+</html>
